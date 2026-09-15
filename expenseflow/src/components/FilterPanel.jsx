@@ -85,15 +85,27 @@ export default function FilterPanel({ filters, onChange, onClear }) {
           id="filter-date-from"
         />
 
-        {/* Date To */}
-        <input
-          type="date"
-          value={filters.to || ''}
-          onChange={e => updateFilter('to', e.target.value)}
-          className="input-base sm:w-36"
-          placeholder="To"
-          id="filter-date-to"
-        />
+        {/* Sorting */}
+        <div className="flex items-center gap-2">
+          <select
+            value={filters.sortBy}
+            onChange={e => updateFilter('sortBy', e.target.value)}
+            className="input-base sm:w-32"
+            id="filter-sortby"
+          >
+            <option value="date">Date</option>
+            <option value="amount">Amount</option>
+          </select>
+          <select
+            value={filters.sortDir}
+            onChange={e => updateFilter('sortDir', e.target.value)}
+            className="input-base sm:w-28"
+            id="filter-sortdir"
+          >
+            <option value="desc">Desc</option>
+            <option value="asc">Asc</option>
+          </select>
+        </div>
 
         {/* Clear filters */}
         {activeCount > 0 && (

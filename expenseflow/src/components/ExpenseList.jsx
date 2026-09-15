@@ -48,9 +48,10 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
     }).format(amount)
   }
 
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      month: 'short', day: 'numeric', year: 'numeric',
+  const formatDateTime = (dateStr) => {
+    return new Date(dateStr).toLocaleString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit'
     })
   }
 
@@ -139,7 +140,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
                 <td className="px-5 py-3.5">
                   <div className="flex items-center gap-1.5 text-gray-400">
                     <HiOutlineCalendar className="w-3.5 h-3.5" />
-                    <span className="text-sm">{formatDate(expense.date)}</span>
+                    <span className="text-sm">{formatDateTime(expense.date)}</span>
                   </div>
                 </td>
 

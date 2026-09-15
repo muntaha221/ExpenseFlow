@@ -26,7 +26,10 @@ const EMPTY_FORM = {
   title:    '',
   amount:   '',
   category: '',
-  date:     new Date().toISOString().split('T')[0], // today as default
+  date:     (() => {
+    const d = new Date()
+    return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  })(), // current datetime as default for datetime-local
   notes:    '',
 }
 
@@ -159,7 +162,7 @@ export default function ExpenseForm({ onAdd, editingExpense, onUpdate, onCancelE
           </label>
           <input
             name="date"
-            type="date"
+            type="datetime-local"
             value={values.date}
             onChange={handleChange}
             className={`input-base ${errors.date ? 'input-error' : ''}`}

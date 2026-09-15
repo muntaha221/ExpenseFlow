@@ -12,8 +12,7 @@
  */
 
 import { MdEdit, MdDelete } from 'react-icons/md'
-import CategoryBadge from './CategoryBadge'
-import { formatPKR, formatDate } from '../utils/calculations'
+import { formatPKR, formatDateTime } from '../utils/calculations'
 
 export default function ExpenseCard({ expense, onEdit, onDelete, index }) {
   return (

@@ -16,7 +16,7 @@
  *   expenses (Array) — all expense objects
  */
 import { useMemo } from 'react'
-import { getTotalAmount, getAverageAmount, getTopCategory } from '../utils/calculations'
+import { getTotalAmount, getAverageAmount, getTopCategory, getThisWeekTotal, getThisMonthTotal } from '../utils/calculations'
 import {
   HiOutlineBanknotes,
   HiOutlineReceiptPercent,
@@ -35,7 +35,9 @@ export default function SummarySection({ expenses }) {
     const count = expenses.length
     const average = getAverageAmount(expenses)
     const top = getTopCategory(expenses)
-    return { total, count, average, top }
+    const weekTotal = getThisWeekTotal(expenses)
+    const monthTotal = getThisMonthTotal(expenses)
+    return { total, count, average, top, weekTotal, monthTotal }
   }, [expenses])
 
   const formatCurrency = (amount) => {
@@ -55,6 +57,22 @@ export default function SummarySection({ expenses }) {
       accent: 'text-emerald-400',
       accentBg: 'bg-emerald-400/10',
       accentBorder: 'border-emerald-400/20',
+    },
+    {
+      label: 'Weekly Spend',
+      value: formatCurrency(stats.weekTotal),
+      icon: HiOutlineChartBar,
+      accent: 'text-cyan-400',
+      accentBg: 'bg-cyan-400/10',
+      accentBorder: 'border-cyan-400/20',
+    },
+    {
+      label: 'Monthly Spend',
+      value: formatCurrency(stats.monthTotal),
+      icon: HiOutlineChartBar,
+      accent: 'text-indigo-400',
+      accentBg: 'bg-indigo-400/10',
+      accentBorder: 'border-indigo-400/20',
     },
     {
       label: 'Expenses',
@@ -84,7 +102,7 @@ export default function SummarySection({ expenses }) {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" id="summary-section">
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3" id="summary-section">
       {cards.map((card, i) => {
         const Icon = card.icon
         return (

@@ -119,7 +119,7 @@ export default function ExpenseChart({ expenses }) {
         {activeTab === 'pie' ? (
           /* ── PIE CHART ── */
           <div className="flex flex-col lg:flex-row items-center gap-6">
-            <div className="w-full lg:w-1/2" style={{ height: 280 }}>
+            <div className="w-full lg:w-1/2" style={{ height: '250px' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -157,10 +157,7 @@ export default function ExpenseChart({ expenses }) {
                     <span className="text-sm text-gray-300 flex-1 truncate">{item.name}</span>
                     <span className="text-xs text-gray-500">{pct}%</span>
                     <span className="text-sm font-syne font-semibold text-gray-200 tabular-nums">
-                      {new Intl.NumberFormat('en-PK', {
-                        style: 'currency', currency: 'PKR',
-                        minimumFractionDigits: 0, maximumFractionDigits: 0,
-                      }).format(item.value)}
+                      {new Intl.NumberFormat('en-PK', { style: 'currency', currency: 'PKR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(item.value)}
                     </span>
                   </div>
                 )
@@ -169,7 +166,7 @@ export default function ExpenseChart({ expenses }) {
           </div>
         ) : (
           /* ── BAR CHART ── */
-          <div style={{ height: 300 }}>
+          <div style={{ height: '260px' }}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={monthlyData} barCategoryGap="20%">
                 <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />

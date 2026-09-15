@@ -93,6 +93,55 @@ export function getMonthlyBreakdown(expenses) {
   return months.map(m => ({ month: m.label, amount: m.amount }))
 }
 
+export function getDailyBreakdown(expenses) {
+  // Last 7 days
+  const days = []
+  const now = new Date()
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() - i)
+    // Local date string for matching
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const label = d.toLocaleDateString('en-US', { weekday: 'short', day: 'numeric' })
+    days.push({ key, label, amount: 0 })
+  }
+
+  expenses.forEach(e => {
+    const d = new Date(e.date)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    const dayEntry = days.find(d => d.key === key)
+    if (dayEntry) {
+      dayEntry.amount += Number(e.amount)
+    }
+  })
+
+  return days.map(d => ({ month: d.label, amount: d.amount })) // reusing "month" key for Recharts XAxis
+}
+
+export function getWeeklyBreakdown(expenses) {
+  // Last 6 weeks
+  const weeks = []
+  const now = new Date()
+  
+  for (let i = 5; i >= 0; i--) {
+    const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (i * 7))
+    end.setHours(23, 59, 59, 999)
+    const start = new Date(end.getFullYear(), end.getMonth(), end.getDate() - 6)
+    start.setHours(0, 0, 0, 0)
+    
+    const label = `${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+    weeks.push({ start, end, label, amount: 0 })
+  }
+
+  expenses.forEach(e => {
+    const d = new Date(e.date)
+    const weekEntry = weeks.find(w => d >= w.start && d <= w.end)
+    if (weekEntry) {
+      weekEntry.amount += Number(e.amount)
+    }
+  })
+
+  return weeks.map(w => ({ month: w.label, amount: w.amount }))
+}
 /**
  * getTopCategory — finds the category with the highest total spending.
  * Returns the category object (from categories.js) or null.
@@ -105,6 +154,27 @@ export function getTopCategory(expenses) {
   const breakdown = getCategoryBreakdown(expenses)
   if (breakdown.length === 0) return null
   return { name: breakdown[0].name, total: breakdown[0].value }
+}
+
+export function getThisWeekTotal(expenses) {
+  const now = new Date()
+  const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()))
+  startOfWeek.setHours(0,0,0,0)
+  
+  return expenses.reduce((sum, e) => {
+    const d = new Date(e.date)
+    return d >= startOfWeek ? sum + Number(e.amount) : sum
+  }, 0)
+}
+
+export function getThisMonthTotal(expenses) {
+  const now = new Date()
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  
+  return expenses.reduce((sum, e) => {
+    const d = new Date(e.date)
+    return d >= startOfMonth ? sum + Number(e.amount) : sum
+  }, 0)
 }
 
 /**
@@ -125,6 +195,20 @@ export function formatDate(dateStr) {
   try {
     return new Date(dateStr).toLocaleDateString('en-US', {
       month: 'short', day: 'numeric', year: 'numeric',
+    })
+  } catch (e) {
+    return dateStr
+  }
+}
+
+/**
+ * formatDateTime — includes day of week, date, and time.
+ */
+export function formatDateTime(dateStr) {
+  try {
+    return new Date(dateStr).toLocaleString('en-US', {
+      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+      hour: 'numeric', minute: '2-digit'
     })
   } catch (e) {
     return dateStr
