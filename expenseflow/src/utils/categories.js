@@ -2,62 +2,29 @@
  * categories.js
  *
  * Central registry of expense categories.
- * WHY A CENTRAL REGISTRY?
- * - Single source of truth for category colors, icons, and labels
- * - Charts, badges, and forms all pull from here
- * - Adding a new category = one line change, propagates everywhere
+ * Updated to 4 core personal categories:
+ *  - Food
+ *  - Shopping
+ *  - Need
+ *  - Others
  */
 import {
   HiOutlineShoppingBag,
-  HiOutlineTruck,
-  HiOutlineBolt,
-  HiOutlineFilm,
   HiOutlineShoppingCart,
-  HiOutlineHeart,
-  HiOutlineAcademicCap,
+  HiOutlineShieldCheck,
   HiOutlineEllipsisHorizontalCircle,
 } from 'react-icons/hi2'
 
 export const CATEGORIES = [
   {
     id: 'food',
-    name: 'Food & Dining',
+    name: 'Food',
     icon: HiOutlineShoppingBag,
     hex: '#f97316',
     bg: 'bg-orange-500/15',
     text: 'text-orange-400',
     border: 'border-orange-500/30',
     ring: 'ring-orange-500/20',
-  },
-  {
-    id: 'transport',
-    name: 'Transport',
-    icon: HiOutlineTruck,
-    hex: '#3b82f6',
-    bg: 'bg-blue-500/15',
-    text: 'text-blue-400',
-    border: 'border-blue-500/30',
-    ring: 'ring-blue-500/20',
-  },
-  {
-    id: 'utilities',
-    name: 'Utilities',
-    icon: HiOutlineBolt,
-    hex: '#eab308',
-    bg: 'bg-yellow-500/15',
-    text: 'text-yellow-400',
-    border: 'border-yellow-500/30',
-    ring: 'ring-yellow-500/20',
-  },
-  {
-    id: 'entertainment',
-    name: 'Entertainment',
-    icon: HiOutlineFilm,
-    hex: '#a855f7',
-    bg: 'bg-purple-500/15',
-    text: 'text-purple-400',
-    border: 'border-purple-500/30',
-    ring: 'ring-purple-500/20',
   },
   {
     id: 'shopping',
@@ -70,28 +37,18 @@ export const CATEGORIES = [
     ring: 'ring-pink-500/20',
   },
   {
-    id: 'health',
-    name: 'Health',
-    icon: HiOutlineHeart,
-    hex: '#22c55e',
-    bg: 'bg-green-500/15',
-    text: 'text-green-400',
-    border: 'border-green-500/30',
-    ring: 'ring-green-500/20',
-  },
-  {
-    id: 'education',
-    name: 'Education',
-    icon: HiOutlineAcademicCap,
-    hex: '#6366f1',
-    bg: 'bg-indigo-500/15',
-    text: 'text-indigo-400',
-    border: 'border-indigo-500/30',
-    ring: 'ring-indigo-500/20',
+    id: 'need',
+    name: 'Need',
+    icon: HiOutlineShieldCheck,
+    hex: '#10b981',
+    bg: 'bg-emerald-500/15',
+    text: 'text-emerald-400',
+    border: 'border-emerald-500/30',
+    ring: 'ring-emerald-500/20',
   },
   {
     id: 'other',
-    name: 'Other',
+    name: 'Others',
     icon: HiOutlineEllipsisHorizontalCircle,
     hex: '#6b7280',
     bg: 'bg-gray-500/15',
@@ -102,9 +59,26 @@ export const CATEGORIES = [
 ]
 
 /**
- * getCategoryById — O(n) lookup. Fine for 8 items.
- * We avoid a Map here for simplicity; the list is small.
+ * getCategoryById — returns category object.
+ * Maps legacy categories (transport, utilities, entertainment, health, education)
+ * to 'need' or 'other' gracefully so past data never crashes.
  */
 export function getCategoryById(id) {
-  return CATEGORIES.find(c => c.id === id) || CATEGORIES[CATEGORIES.length - 1]
+  if (!id) return CATEGORIES[3] // others
+  const found = CATEGORIES.find(c => c.id === id)
+  if (found) return found
+
+  // Backwards compatibility mapping for previous categories
+  const legacyMap = {
+    transport: 'need',
+    utilities: 'need',
+    health: 'need',
+    education: 'need',
+    entertainment: 'shopping',
+    other: 'other',
+    others: 'other',
+  }
+
+  const mappedId = legacyMap[id.toLowerCase()] || 'other'
+  return CATEGORIES.find(c => c.id === mappedId) || CATEGORIES[3]
 }

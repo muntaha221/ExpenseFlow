@@ -22,9 +22,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useLocalStorage }  from './hooks/useLocalStorage'
 import { getTotalAmount }   from './utils/calculations'
-import Header    from './components/Header'
-import Toast     from './components/Toast'
-import Dashboard from './pages/Dashboard'
+import Header      from './components/Header'
+import Toast       from './components/Toast'
+import Dashboard   from './pages/Dashboard'
+import BackupModal from './components/BackupModal'
 
 export default function App() {
   // ── Persistent expense data ──
@@ -35,10 +36,20 @@ export default function App() {
   // Also persist the user's preference
   const [darkMode, setDarkMode] = useLocalStorage('expenseflow_dark', true)
 
+  // ── Backup Modal state ──
+  const [isBackupOpen, setIsBackupOpen] = useState(false)
+
   // Apply/remove 'dark' class on <html> whenever darkMode changes
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode)
   }, [darkMode])
+
+  // Request persistent storage on modern browsers / Android to protect data
+  useEffect(() => {
+    if (navigator.storage && navigator.storage.persist) {
+      navigator.storage.persist().catch(() => {})
+    }
+  }, [])
 
   // ── Toast state ──
   const [toast, setToast] = useState({ message: '', visible: false })
@@ -68,17 +79,21 @@ export default function App() {
     showToast('Expense removed')
   }, [setExpenses])
 
+  // RESTORE — replaces full dataset from a backup file
+  const handleRestoreExpenses = useCallback((restoredList) => {
+    setExpenses(restoredList)
+  }, [setExpenses])
+
   const total = getTotalAmount(expenses)
 
   return (
-    // The 'dark' class on <html> (set in useEffect) enables Tailwind dark mode.
-    // Here we just ensure minimum page height and background.
     <div className="min-h-screen">
-
       <Header
         total={total}
+        count={expenses.length}
         darkMode={darkMode}
         onToggleDark={() => setDarkMode(d => !d)}
+        onOpenBackup={() => setIsBackupOpen(true)}
       />
 
       <Dashboard
@@ -86,6 +101,14 @@ export default function App() {
         onAdd={handleAdd}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
+      />
+
+      <BackupModal
+        isOpen={isBackupOpen}
+        onClose={() => setIsBackupOpen(false)}
+        expenses={expenses}
+        onRestoreExpenses={handleRestoreExpenses}
+        onShowToast={showToast}
       />
 
       <Toast message={toast.message} visible={toast.visible} />

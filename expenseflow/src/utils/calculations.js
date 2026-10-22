@@ -178,6 +178,98 @@ export function getThisMonthTotal(expenses) {
 }
 
 /**
+ * getRolling7DayStats — Trailing 7-Day Dynamic Window
+ * Looks at the last 7 calendar days up to today (today - 6 days to today).
+ * NEVER resets on Mondays or 1st of month — it rolls continuously day by day.
+ * 
+ * @param {Array} expenses
+ * @returns {{ total: number, dailyAvg: number, count: number }}
+ */
+export function getRolling7DayStats(expenses) {
+  const now = new Date()
+  // Start from 6 days ago at 00:00:00 (which covers 7 full calendar days including today)
+  const windowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)
+  windowStart.setHours(0, 0, 0, 0)
+  
+  const windowEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  windowEnd.setHours(23, 59, 59, 999)
+
+  let total = 0
+  let count = 0
+
+  expenses.forEach(e => {
+    const d = new Date(e.date)
+    if (d >= windowStart && d <= windowEnd) {
+      total += Number(e.amount)
+      count += 1
+    }
+  })
+
+  // 7-day average daily spend
+  const dailyAvg = total / 7
+
+  return { total, dailyAvg, count }
+}
+
+/**
+ * getSmartMonthlyProjection — Dynamic Run-Rate Monthly Forecast
+ * 
+ * How it works smartly:
+ * 1. Takes actual Month-To-Date (MTD) spending so far.
+ * 2. Uses the continuous trailing 7-day daily average as current spending velocity (burn rate).
+ * 3. Multiplies burn rate by remaining days in the month.
+ * 4. If a high spend day happens (e.g. 2000), 7-day pace jumps, raising projected monthly spend.
+ * 5. If following days drop back to normal (e.g. 800), 7-day pace cools down, smoothly self-correcting!
+ * 
+ * @param {Array} expenses
+ * @returns {{ mtdTotal: number, daysInMonth: number, currentDay: number, remainingDays: number, dailyBurnRate: number, projectedTotal: number }}
+ */
+export function getSmartMonthlyProjection(expenses) {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = now.getMonth()
+  const currentDay = now.getDate()
+  
+  // Total days in current month (e.g., 28, 30, 31)
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
+  const remainingDays = Math.max(0, daysInMonth - currentDay)
+
+  // Actual MTD total
+  const startOfMonth = new Date(year, month, 1)
+  startOfMonth.setHours(0, 0, 0, 0)
+
+  let mtdTotal = 0
+  expenses.forEach(e => {
+    const d = new Date(e.date)
+    if (d >= startOfMonth && d <= now) {
+      mtdTotal += Number(e.amount)
+    }
+  })
+
+  // Get rolling 7-day burn rate
+  const rolling7 = getRolling7DayStats(expenses)
+  
+  // If user has expenses in last 7 days, use rolling 7-day daily average.
+  // Otherwise fallback to MTD daily average.
+  let dailyBurnRate = rolling7.dailyAvg
+  if (dailyBurnRate === 0 && mtdTotal > 0) {
+    dailyBurnRate = mtdTotal / currentDay
+  }
+
+  const projectedRemaining = dailyBurnRate * remainingDays
+  const projectedTotal = Math.round(mtdTotal + projectedRemaining)
+
+  return {
+    mtdTotal,
+    daysInMonth,
+    currentDay,
+    remainingDays,
+    dailyBurnRate: Math.round(dailyBurnRate),
+    projectedTotal
+  }
+}
+
+/**
  * formatPKR — formats a number as PKR currency without fractional digits.
  * Used by small components to keep formatting consistent across the app.
  */

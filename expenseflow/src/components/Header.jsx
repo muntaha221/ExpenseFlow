@@ -17,9 +17,9 @@
  *   darkMode (boolean) — current theme
  *   onToggleDark (function) — callback to flip dark mode
  */
-import { HiOutlineSun, HiOutlineMoon, HiOutlineBanknotes } from 'react-icons/hi2'
+import { HiOutlineSun, HiOutlineMoon, HiOutlineBanknotes, HiOutlineShieldCheck } from 'react-icons/hi2'
 
-export default function Header({ total, count, darkMode, onToggleDark }) {
+export default function Header({ total, count, darkMode, onToggleDark, onOpenBackup }) {
   /**
    * formatCurrency — formats a number as Pakistani Rupees.
    * Using Intl.NumberFormat for locale-aware formatting.
@@ -59,8 +59,8 @@ export default function Header({ total, count, darkMode, onToggleDark }) {
           </div>
         </div>
 
-        {/* Right: Total + Dark Mode */}
-        <div className="flex items-center gap-3">
+        {/* Right: Total + Backup + Dark Mode */}
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Total badge */}
           <div className="hidden sm:flex items-center gap-2 px-3 py-1.5
             bg-emerald-400/10 border border-emerald-400/20 rounded-lg">
@@ -69,6 +69,22 @@ export default function Header({ total, count, darkMode, onToggleDark }) {
               {formatCurrency(total)}
             </span>
           </div>
+
+          {/* Backup & Data button */}
+          <button
+            onClick={onOpenBackup}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 sm:px-3 sm:py-1.5
+              bg-emerald-500/10 hover:bg-emerald-500/20
+              border border-emerald-500/30 rounded-xl
+              text-emerald-400 hover:text-emerald-300
+              text-xs font-dm font-medium
+              transition-all duration-200"
+            title="Backup & Restore Data"
+            id="backup-data-toggle"
+          >
+            <HiOutlineShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span className="hidden xs:inline">Backup</span>
+          </button>
 
           {/* Dark mode toggle */}
           <button
