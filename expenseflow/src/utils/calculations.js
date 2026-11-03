@@ -1,28 +1,19 @@
 /**
  * calculations.js
  *
- * Pure functions for deriving summary statistics from expense data.
+ * Pure functions for deriving summary statistics and projections.
  */
 import { getCategoryById } from './categories'
 
-/**
- * getTotalAmount — sums all expense amounts.
- */
 export function getTotalAmount(expenses) {
   return expenses.reduce((sum, e) => sum + Number(e.amount), 0)
 }
 
-/**
- * getAverageAmount — total / count, or 0 if no expenses.
- */
 export function getAverageAmount(expenses) {
   if (expenses.length === 0) return 0
   return getTotalAmount(expenses) / expenses.length
 }
 
-/**
- * getCategoryBreakdown — groups expenses by category.
- */
 export function getCategoryBreakdown(expenses) {
   const map = new Map()
 
@@ -40,15 +31,13 @@ export function getCategoryBreakdown(expenses) {
 }
 
 /**
- * getDailyUsageData — Daily spending usage for Bar Graph
- * 
- * Groups expenses by day for the active month.
- * Returns each day's label, date, and total amount.
+ * getDailyUsageData — Daily spending usage for the selected month.
+ * Shows every day of the month up to current day (or full month for past months).
  */
 export function getDailyUsageData(expenses, selectedMonth) {
   const now = new Date()
   let year, month
-  if (selectedMonth) {
+  if (selectedMonth && selectedMonth !== 'all') {
     const parts = selectedMonth.split('-').map(Number)
     year = parts[0]
     month = parts[1] - 1
@@ -63,7 +52,7 @@ export function getDailyUsageData(expenses, selectedMonth) {
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const maxDay = isCurrentMonth ? Math.max(now.getDate(), 1) : daysInMonth
 
-  // Map of dayNumber -> total spend
+  // Map dayNumber -> total spend
   const dayMap = new Map()
   expenses.forEach(e => {
     const d = new Date(e.date)
@@ -73,7 +62,6 @@ export function getDailyUsageData(expenses, selectedMonth) {
     }
   })
 
-  // Build daily entries from day 1 to maxDay
   const data = []
   for (let dayNum = 1; dayNum <= maxDay; dayNum++) {
     const d = new Date(year, month, dayNum)
@@ -93,9 +81,6 @@ export function getDailyUsageData(expenses, selectedMonth) {
   return data
 }
 
-/**
- * getTopCategory — finds the category with the highest total spending.
- */
 export function getTopCategory(expenses) {
   if (expenses.length === 0) return null
   const breakdown = getCategoryBreakdown(expenses)
@@ -103,9 +88,6 @@ export function getTopCategory(expenses) {
   return { name: breakdown[0].name, total: breakdown[0].value }
 }
 
-/**
- * getRolling7DayStats — Trailing 7-Day Dynamic Window
- */
 export function getRolling7DayStats(expenses) {
   const now = new Date()
   const windowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6)
@@ -131,13 +113,17 @@ export function getRolling7DayStats(expenses) {
 }
 
 /**
- * getSmartMonthlyProjection — Dynamic Run-Rate Monthly Forecast
+ * getSmartMonthlyProjection — Intelligent Run-Rate Monthly Forecast
+ * 
+ * Takes recorded daily spend and calculates weekly run-rate.
+ * e.g., if Day 1 is 2200 and Day 2 is 350, it averages them to calculate
+ * weekly pace (~6k-8k/week) and projects the remaining month smoothly.
  */
 export function getSmartMonthlyProjection(expenses, selectedMonth) {
   const now = new Date()
   
   let year, month
-  if (selectedMonth) {
+  if (selectedMonth && selectedMonth !== 'all') {
     const parts = selectedMonth.split('-').map(Number)
     year = parts[0]
     month = parts[1] - 1
@@ -165,54 +151,20 @@ export function getSmartMonthlyProjection(expenses, selectedMonth) {
     dailyTotals[dayNum] = (dailyTotals[dayNum] || 0) + amt
   })
 
-  // 4 weekly blocks
-  const weeklyTotals = []
-  const weeksCompleted = []
+  // Days with recorded spending
+  const recordedDaysCount = Object.keys(dailyTotals).length
+  const elapsedDays = Math.max(1, currentDay)
   
-  for (let w = 0; w < 4; w++) {
-    const weekStart = w * 7 + 1
-    const weekEnd = w === 3 ? daysInMonth : (w + 1) * 7
-    let weekTotal = 0
-    let hasData = false
-    
-    for (let d = weekStart; d <= weekEnd; d++) {
-      if (dailyTotals[d]) {
-        weekTotal += dailyTotals[d]
-        hasData = true
-      }
-    }
-    
-    const weekFullyPast = isCurrentMonth ? weekEnd < currentDay : true
-    
-    if (hasData) {
-      weeklyTotals.push(weekTotal)
-    }
-    if (weekFullyPast && hasData) {
-      weeksCompleted.push(weekTotal)
-    }
-  }
-  
-  const weeklyAvg = weeksCompleted.length > 0
-    ? weeksCompleted.reduce((s, w) => s + w, 0) / weeksCompleted.length
-    : (weeklyTotals.length > 0
-      ? weeklyTotals.reduce((s, w) => s + w, 0) / weeklyTotals.length
-      : 0)
+  // Daily average over the days elapsed in this month
+  const dailyAvg = mtdTotal > 0 ? mtdTotal / elapsedDays : 0
+  // Estimated weekly pace
+  const weeklyPace = Math.round(dailyAvg * 7)
 
-  const daysWithData = Object.keys(dailyTotals).length
-  let dailyBurnRate = 0
-  
-  if (daysWithData > 0) {
-    const elapsedDays = isCurrentMonth ? currentDay : daysInMonth
-    dailyBurnRate = mtdTotal / elapsedDays
-  }
-  
+  // Smart projection: Current spent + (daily pace * remaining days)
   let projectedTotal = mtdTotal
   if (isCurrentMonth && remainingDays > 0) {
-    if (weeksCompleted.length >= 1) {
-      const remainingWeeks = remainingDays / 7
-      projectedTotal = Math.round(mtdTotal + (weeklyAvg * remainingWeeks))
-    } else {
-      projectedTotal = Math.round(mtdTotal + (dailyBurnRate * remainingDays))
+    if (mtdTotal > 0) {
+      projectedTotal = Math.round(mtdTotal + (dailyAvg * remainingDays))
     }
   }
 
@@ -221,15 +173,13 @@ export function getSmartMonthlyProjection(expenses, selectedMonth) {
     daysInMonth,
     currentDay,
     remainingDays,
-    dailyBurnRate: Math.round(dailyBurnRate),
+    dailyAvg: Math.round(dailyAvg),
+    weeklyPace,
     projectedTotal,
-    weeklyAvg: Math.round(weeklyAvg),
+    recordedDaysCount,
   }
 }
 
-/**
- * formatPKR — formats a number as PKR currency without fractional digits.
- */
 export function formatPKR(amount) {
   return new Intl.NumberFormat('en-PK', {
     style: 'currency', currency: 'PKR',
@@ -237,9 +187,6 @@ export function formatPKR(amount) {
   }).format(Number(amount))
 }
 
-/**
- * formatDateShort — short date (e.g. "Nov 3, 2026").
- */
 export function formatDateShort(dateStr) {
   try {
     return new Date(dateStr).toLocaleDateString('en-US', {
@@ -250,9 +197,6 @@ export function formatDateShort(dateStr) {
   }
 }
 
-/**
- * formatTimeShort — short time (e.g. "2:30 PM").
- */
 export function formatTimeShort(dateStr) {
   try {
     return new Date(dateStr).toLocaleString('en-US', {
@@ -263,9 +207,6 @@ export function formatTimeShort(dateStr) {
   }
 }
 
-/**
- * getDayName — returns the full day name (e.g. "Monday", "Tuesday").
- */
 export function getDayName(dateStr) {
   try {
     const d = dateStr ? new Date(dateStr) : new Date()
@@ -274,4 +215,41 @@ export function getDayName(dateStr) {
   } catch (e) {
     return ''
   }
+}
+
+/**
+ * getMonthList — Generates month keys with guaranteed coverage
+ * Includes current month, previous 11 months (October 2026, September 2026, etc.),
+ * plus any months found in the user's expense history.
+ */
+export function getMonthList(expenses = []) {
+  const months = []
+  const now = new Date()
+  
+  // Last 12 calendar months (including current Nov 2026 and previous Oct 2026)
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+    if (!months.includes(key)) months.push(key)
+  }
+
+  // Any additional months present in expenses
+  expenses.forEach(e => {
+    try {
+      const d = new Date(e.date)
+      if (!isNaN(d.getTime())) {
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+        if (!months.includes(key)) months.push(key)
+      }
+    } catch {}
+  })
+
+  return months.sort((a, b) => b.localeCompare(a))
+}
+
+export function formatMonthLabel(key) {
+  if (key === 'all') return 'All Months'
+  const [y, m] = key.split('-').map(Number)
+  const d = new Date(y, m - 1, 1)
+  return d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
 }

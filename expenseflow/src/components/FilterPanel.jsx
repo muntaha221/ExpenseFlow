@@ -1,53 +1,18 @@
 /**
  * FilterPanel.jsx
  *
- * Filter toolbar with search, category, month, and sorting.
+ * Filter toolbar with search, category, date, and sorting.
  */
-import { useMemo } from 'react'
 import { CATEGORIES } from '../utils/categories'
 import {
   HiOutlineMagnifyingGlass,
   HiOutlineXMark,
 } from 'react-icons/hi2'
 
-function toMonthKey(date) {
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-}
-
-function formatMonthLabel(key) {
-  if (key === 'all') return 'All Months'
-  const [y, m] = key.split('-').map(Number)
-  const d = new Date(y, m - 1, 1)
-  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
-}
-
-export default function FilterPanel({
-  filters,
-  onChange,
-  onClear,
-  selectedMonth,
-  onMonthChange,
-  allExpenses = [],
-}) {
+export default function FilterPanel({ filters, onChange, onClear }) {
   function updateFilter(key, value) {
     onChange({ ...filters, [key]: value })
   }
-
-  // Available months from actual data + current month
-  const availableMonths = useMemo(() => {
-    const set = new Set()
-    const nowKey = toMonthKey(new Date())
-    set.add(nowKey)
-
-    allExpenses.forEach(e => {
-      try {
-        const d = new Date(e.date)
-        if (!isNaN(d.getTime())) set.add(toMonthKey(d))
-      } catch {}
-    })
-
-    return Array.from(set).sort((a, b) => b.localeCompare(a))
-  }, [allExpenses])
 
   const activeCount = [
     filters.search,
@@ -72,30 +37,11 @@ export default function FilterPanel({
           />
         </div>
 
-        {/* Month Selector in Filter Bar (clean & non-intrusive) */}
-        {onMonthChange && (
-          <select
-            value={selectedMonth || ''}
-            onChange={e => onMonthChange(e.target.value)}
-            className="input-base sm:w-36 text-xs font-semibold text-emerald-400"
-            id="filter-month"
-            title="Filter by Month"
-          >
-            {availableMonths.map(key => (
-              <option key={key} value={key} className="bg-gray-900 text-gray-200">
-                {formatMonthLabel(key)}
-                {key === toMonthKey(new Date()) ? ' (Current)' : ''}
-              </option>
-            ))}
-            <option value="all" className="bg-gray-900 text-gray-200">All Months</option>
-          </select>
-        )}
-
         {/* Category */}
         <select
           value={filters.category}
           onChange={e => updateFilter('category', e.target.value)}
-          className="input-base sm:w-36 text-xs"
+          className="input-base sm:w-40 text-xs"
           id="filter-category"
         >
           <option value="">All Categories</option>

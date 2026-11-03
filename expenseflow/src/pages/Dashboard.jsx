@@ -1,7 +1,7 @@
 /**
  * Dashboard.jsx
  *
- * Main page assembling the form, summary metrics, filters, table, and daily chart.
+ * Main page assembling month navigator, summary metrics, form, filters, list, and daily chart.
  */
 
 import { useState, useMemo } from 'react'
@@ -11,6 +11,7 @@ import ExpenseList    from '../components/ExpenseList'
 import SummarySection from '../components/SummarySection'
 import ExpenseChart   from '../components/ExpenseChart'
 import ConfirmModal   from '../components/ConfirmModal'
+import MonthNavigator from '../components/MonthNavigator'
 
 const DEFAULT_FILTERS = {
   search:   '',
@@ -38,22 +39,18 @@ export default function Dashboard({
   const filtered = useMemo(() => {
     let list = [...expenses]
 
-    // Search by title
     if (filters.search) {
       const q = filters.search.toLowerCase()
       list = list.filter(e => e.title.toLowerCase().includes(q))
     }
 
-    // Filter by category
     if (filters.category) {
       list = list.filter(e => e.category === filters.category)
     }
 
-    // Filter by date range
     if (filters.from) list = list.filter(e => e.date >= filters.from)
     if (filters.to)   list = list.filter(e => e.date <= filters.to)
 
-    // Sorting
     list.sort((a, b) => {
       let cmp = 0
       if (filters.sortBy === 'date') {
@@ -84,7 +81,15 @@ export default function Dashboard({
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
-      {/* Summary Cards */}
+      {/* Month Navigator — easy switching between October, November, etc. */}
+      <MonthNavigator
+        selectedMonth={selectedMonth}
+        onMonthChange={onMonthChange}
+        allExpenses={allExpenses}
+        currentMonthEntriesCount={expenses.length}
+      />
+
+      {/* Summary Cards (without duplicate Month box) */}
       <SummarySection expenses={expenses} selectedMonth={selectedMonth} />
 
       {/* Main layout: Form (left) + Table & Daily Chart (right) */}
@@ -106,9 +111,6 @@ export default function Dashboard({
             filters={filters}
             onChange={setFilters}
             onClear={() => setFilters(DEFAULT_FILTERS)}
-            selectedMonth={selectedMonth}
-            onMonthChange={onMonthChange}
-            allExpenses={allExpenses}
           />
           <ExpenseList
             expenses={filtered}
