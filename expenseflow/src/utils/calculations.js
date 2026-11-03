@@ -215,49 +215,115 @@ export function getRolling7DayStats(expenses) {
  * getSmartMonthlyProjection — Dynamic Run-Rate Monthly Forecast
  * 
  * How it works smartly:
- * 1. Takes actual Month-To-Date (MTD) spending so far.
- * 2. Uses the continuous trailing 7-day daily average as current spending velocity (burn rate).
- * 3. Multiplies burn rate by remaining days in the month.
- * 4. If a high spend day happens (e.g. 2000), 7-day pace jumps, raising projected monthly spend.
- * 5. If following days drop back to normal (e.g. 800), 7-day pace cools down, smoothly self-correcting!
+ * 1. Groups expenses by day within the month.
+ * 2. Calculates a true daily average from days that have data.
+ * 3. Builds weekly totals from the data to get a weekly average.
+ * 4. For projection: uses the weekly average × (remaining weeks) + what's already spent.
+ * 5. Self-corrects: if one day is high (e.g. 2000) but the next 6 days are normal (500),
+ *    the weekly average smooths it out (e.g. ~5000/week → ~20k/month).
  * 
- * @param {Array} expenses
- * @returns {{ mtdTotal: number, daysInMonth: number, currentDay: number, remainingDays: number, dailyBurnRate: number, projectedTotal: number }}
+ * For past months: shows final totals and averages (no projection needed).
+ * 
+ * @param {Array} expenses — month-filtered expenses
+ * @param {string} selectedMonth — "YYYY-MM" key
+ * @returns {{ mtdTotal, daysInMonth, currentDay, remainingDays, dailyBurnRate, projectedTotal, weeklyAvg }}
  */
-export function getSmartMonthlyProjection(expenses) {
+export function getSmartMonthlyProjection(expenses, selectedMonth) {
   const now = new Date()
-  const year = now.getFullYear()
-  const month = now.getMonth()
-  const currentDay = now.getDate()
   
-  // Total days in current month (e.g., 28, 30, 31)
+  // Parse selected month
+  let year, month
+  if (selectedMonth) {
+    const parts = selectedMonth.split('-').map(Number)
+    year = parts[0]
+    month = parts[1] - 1 // 0-based
+  } else {
+    year = now.getFullYear()
+    month = now.getMonth()
+  }
+  
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const isCurrentMonth = selectedMonth === currentMonthKey || !selectedMonth
+  
+  // Total days in selected month
   const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const remainingDays = Math.max(0, daysInMonth - currentDay)
+  
+  // For current month, use today's date; for past months, use last day of that month
+  const currentDay = isCurrentMonth ? now.getDate() : daysInMonth
+  const remainingDays = isCurrentMonth ? Math.max(0, daysInMonth - currentDay) : 0
 
-  // Actual MTD total
-  const startOfMonth = new Date(year, month, 1)
-  startOfMonth.setHours(0, 0, 0, 0)
-
+  // Sum all expenses (they're already filtered to this month by App.jsx)
   let mtdTotal = 0
+  const dailyTotals = {} // day-of-month → total for that day
+  
   expenses.forEach(e => {
+    const amt = Number(e.amount)
+    mtdTotal += amt
+    
     const d = new Date(e.date)
-    if (d >= startOfMonth && d <= now) {
-      mtdTotal += Number(e.amount)
-    }
+    const dayNum = d.getDate()
+    dailyTotals[dayNum] = (dailyTotals[dayNum] || 0) + amt
   })
 
-  // Get rolling 7-day burn rate
-  const rolling7 = getRolling7DayStats(expenses)
+  // Build weekly totals from actual data
+  // Week 1: days 1-7, Week 2: days 8-14, Week 3: days 15-21, Week 4: days 22-28/29/30/31
+  const weeklyTotals = []
+  const weeksCompleted = []
   
-  // If user has expenses in last 7 days, use rolling 7-day daily average.
-  // Otherwise fallback to MTD daily average.
-  let dailyBurnRate = rolling7.dailyAvg
-  if (dailyBurnRate === 0 && mtdTotal > 0) {
-    dailyBurnRate = mtdTotal / currentDay
+  for (let w = 0; w < 4; w++) {
+    const weekStart = w * 7 + 1
+    const weekEnd = w === 3 ? daysInMonth : (w + 1) * 7
+    let weekTotal = 0
+    let hasData = false
+    
+    for (let d = weekStart; d <= weekEnd; d++) {
+      if (dailyTotals[d]) {
+        weekTotal += dailyTotals[d]
+        hasData = true
+      }
+    }
+    
+    // Only count weeks that are fully past (or have data)
+    const weekFullyPast = isCurrentMonth ? weekEnd < currentDay : true
+    
+    if (hasData) {
+      weeklyTotals.push(weekTotal)
+    }
+    if (weekFullyPast && hasData) {
+      weeksCompleted.push(weekTotal)
+    }
   }
+  
+  // Calculate weekly average from completed weeks (for projection)
+  const weeklyAvg = weeksCompleted.length > 0
+    ? weeksCompleted.reduce((s, w) => s + w, 0) / weeksCompleted.length
+    : (weeklyTotals.length > 0
+      ? weeklyTotals.reduce((s, w) => s + w, 0) / weeklyTotals.length
+      : 0)
 
-  const projectedRemaining = dailyBurnRate * remainingDays
-  const projectedTotal = Math.round(mtdTotal + projectedRemaining)
+  // Daily burn rate: based on actual data days, not calendar days
+  const daysWithData = Object.keys(dailyTotals).length
+  let dailyBurnRate = 0
+  
+  if (daysWithData > 0) {
+    // Use the smarter approach: total spent / number of elapsed days (not just days with data)
+    // This accounts for zero-spend days properly
+    const elapsedDays = isCurrentMonth ? currentDay : daysInMonth
+    dailyBurnRate = mtdTotal / elapsedDays
+  }
+  
+  // Smart projection for current month
+  let projectedTotal = mtdTotal
+  if (isCurrentMonth && remainingDays > 0) {
+    if (weeksCompleted.length >= 1) {
+      // Use weekly average to project remaining time
+      const remainingWeeks = remainingDays / 7
+      projectedTotal = Math.round(mtdTotal + (weeklyAvg * remainingWeeks))
+    } else {
+      // Fallback: use daily burn rate
+      projectedTotal = Math.round(mtdTotal + (dailyBurnRate * remainingDays))
+    }
+  }
 
   return {
     mtdTotal,
@@ -265,7 +331,8 @@ export function getSmartMonthlyProjection(expenses) {
     currentDay,
     remainingDays,
     dailyBurnRate: Math.round(dailyBurnRate),
-    projectedTotal
+    projectedTotal,
+    weeklyAvg: Math.round(weeklyAvg),
   }
 }
 
@@ -304,5 +371,42 @@ export function formatDateTime(dateStr) {
     })
   } catch (e) {
     return dateStr
+  }
+}
+
+/**
+ * getDayName — returns the full day name (e.g. "Monday") for a date string.
+ */
+export function getDayName(dateStr) {
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'long' })
+  } catch (e) {
+    return ''
+  }
+}
+
+/**
+ * formatDateShort — short date without day name (e.g. "Nov 3, 2026").
+ */
+export function formatDateShort(dateStr) {
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', {
+      month: 'short', day: 'numeric', year: 'numeric',
+    })
+  } catch (e) {
+    return dateStr
+  }
+}
+
+/**
+ * formatTimeShort — short time (e.g. "2:30 PM").
+ */
+export function formatTimeShort(dateStr) {
+  try {
+    return new Date(dateStr).toLocaleString('en-US', {
+      hour: 'numeric', minute: '2-digit',
+    })
+  } catch (e) {
+    return ''
   }
 }

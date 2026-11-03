@@ -1,19 +1,17 @@
 /**
  * SummarySection.jsx
  *
- * A row of stat cards showing key metrics at a glance:
- *  1. Total Spent — sum of all expenses
- *  2. Total Expenses — count of entries
- *  3. Average — mean expense amount
- *  4. Top Category — category with highest spending
- *
- * WHY STAT CARDS?
- * - Gives the user an instant overview without reading the table
- * - Visual hierarchy: big numbers draw the eye first
- * - Each card has a unique accent colour so they're distinguishable
+ * A row of stat cards showing key metrics at a glance for the selected month:
+ *  1. Total Spent — sum of all expenses in the month
+ *  2. Rolling 7-Day Spend — trailing 7-day window
+ *  3. This Month (MTD) — month-to-date total
+ *  4. Projected Month End — smart projection using weekly averages
+ *  5. Top Category — category with highest spending
+ *  6. Total Entries — count of entries
  *
  * Props:
- *   expenses (Array) — all expense objects
+ *   expenses (Array) — month-filtered expense objects
+ *   selectedMonth (string) — "YYYY-MM" key for the selected month
  */
 import { useMemo } from 'react'
 import {
@@ -31,19 +29,19 @@ import {
   HiOutlineCalendarDays,
 } from 'react-icons/hi2'
 
-export default function SummarySection({ expenses }) {
+export default function SummarySection({ expenses, selectedMonth }) {
   /**
-   * useMemo — recalculate stats ONLY when expenses change.
+   * useMemo — recalculate stats ONLY when expenses or selectedMonth change.
    */
   const stats = useMemo(() => {
     const total = getTotalAmount(expenses)
     const count = expenses.length
     const top = getTopCategory(expenses)
     const rolling7 = getRolling7DayStats(expenses)
-    const projection = getSmartMonthlyProjection(expenses)
+    const projection = getSmartMonthlyProjection(expenses, selectedMonth)
 
     return { total, count, top, rolling7, projection }
-  }, [expenses])
+  }, [expenses, selectedMonth])
 
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('en-PK', {
@@ -53,6 +51,11 @@ export default function SummarySection({ expenses }) {
       maximumFractionDigits: 0,
     }).format(amount)
   }
+
+  // Check if we're viewing a past month (not the current one)
+  const now = new Date()
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const isPastMonth = selectedMonth && selectedMonth !== currentMonthKey
 
   const cards = [
     {
@@ -65,33 +68,47 @@ export default function SummarySection({ expenses }) {
       accentBorder: 'border-emerald-400/20',
     },
     {
-      label: 'Rolling 7-Day Spend',
-      value: formatCurrency(stats.rolling7.total),
-      subValue: `Avg ${formatCurrency(stats.rolling7.dailyAvg)} / day`,
+      label: isPastMonth ? 'Daily Average' : 'Rolling 7-Day Spend',
+      value: isPastMonth
+        ? formatCurrency(stats.projection.dailyBurnRate)
+        : formatCurrency(stats.rolling7.total),
+      subValue: isPastMonth
+        ? `Over ${stats.projection.daysInMonth} days`
+        : `Avg ${formatCurrency(stats.rolling7.dailyAvg)} / day`,
       icon: HiOutlineChartBar,
       accent: 'text-cyan-400',
       accentBg: 'bg-cyan-400/10',
       accentBorder: 'border-cyan-400/20',
-      tooltip: 'Trailing 7 continuous days (never resets on Monday)',
+      tooltip: isPastMonth
+        ? 'Average daily spend for this month'
+        : 'Trailing 7 continuous days (never resets on Monday)',
     },
     {
-      label: 'This Month (MTD)',
+      label: isPastMonth ? 'Month Total' : 'This Month (MTD)',
       value: formatCurrency(stats.projection.mtdTotal),
-      subValue: `Day ${stats.projection.currentDay} of ${stats.projection.daysInMonth}`,
+      subValue: isPastMonth
+        ? `Final — ${stats.projection.daysInMonth} days`
+        : `Day ${stats.projection.currentDay} of ${stats.projection.daysInMonth}`,
       icon: HiOutlineCalendarDays,
       accent: 'text-indigo-400',
       accentBg: 'bg-indigo-400/10',
       accentBorder: 'border-indigo-400/20',
     },
     {
-      label: 'Projected Month End',
-      value: formatCurrency(stats.projection.projectedTotal),
-      subValue: `Pace: ${formatCurrency(stats.projection.dailyBurnRate)}/day`,
+      label: isPastMonth ? 'Weekly Average' : 'Projected Month End',
+      value: isPastMonth
+        ? formatCurrency(stats.projection.weeklyAvg || 0)
+        : formatCurrency(stats.projection.projectedTotal),
+      subValue: isPastMonth
+        ? 'Average per week'
+        : `Pace: ${formatCurrency(stats.projection.dailyBurnRate)}/day`,
       icon: HiOutlineArrowTrendingUp,
       accent: 'text-pink-400',
       accentBg: 'bg-pink-400/10',
       accentBorder: 'border-pink-400/20',
-      tooltip: 'Smart estimate based on rolling daily burn rate',
+      tooltip: isPastMonth
+        ? 'Average weekly spend for this month'
+        : 'Smart estimate based on weekly spending patterns',
     },
     {
       label: 'Top Category',
@@ -105,7 +122,9 @@ export default function SummarySection({ expenses }) {
     {
       label: 'Total Entries',
       value: stats.count,
-      subValue: `${stats.rolling7.count} in last 7 days`,
+      subValue: isPastMonth
+        ? 'entries this month'
+        : `${stats.rolling7.count} in last 7 days`,
       icon: HiOutlineReceiptPercent,
       accent: 'text-purple-400',
       accentBg: 'bg-purple-400/10',

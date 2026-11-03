@@ -19,7 +19,7 @@
  */
 import { HiOutlineSun, HiOutlineMoon, HiOutlineBanknotes, HiOutlineShieldCheck } from 'react-icons/hi2'
 
-export default function Header({ total, count, darkMode, onToggleDark, onOpenBackup }) {
+export default function Header({ total, count, darkMode, onToggleDark, onOpenBackup, selectedMonth }) {
   /**
    * formatCurrency — formats a number as Pakistani Rupees.
    * Using Intl.NumberFormat for locale-aware formatting.
@@ -54,7 +54,7 @@ export default function Header({ total, count, darkMode, onToggleDark, onOpenBac
               ExpenseFlow
             </h1>
             <p className="text-[11px] text-gray-500 font-dm">
-              {count} expense{count !== 1 ? 's' : ''} tracked
+              {count} expense{count !== 1 ? 's' : ''} this month
             </p>
           </div>
         </div>

@@ -1,8 +1,12 @@
 import { MdEdit, MdDelete } from 'react-icons/md'
-import { formatPKR, formatDateTime } from '../utils/calculations'
+import { formatPKR, getDayName, formatDateShort, formatTimeShort } from '../utils/calculations'
 import CategoryBadge from './CategoryBadge'
 
 export default function ExpenseCard({ expense, onEdit, onDelete, index }) {
+  const dayName = getDayName(expense.date)
+  const dateStr = formatDateShort(expense.date)
+  const timeStr = formatTimeShort(expense.date)
+
   return (
     <div className="card p-4 animate-fade-in-up" style={{ animationDelay: `${index * 40}ms` }}>
       <div className="flex items-start justify-between gap-3">
@@ -13,7 +17,11 @@ export default function ExpenseCard({ expense, onEdit, onDelete, index }) {
           )}
           <div className="flex items-center gap-2 mt-2 flex-wrap">
             <CategoryBadge categoryId={expense.category} />
-            <span className="text-xs text-gray-500">{formatDateTime(expense.date)}</span>
+            {/* Day name as primary, date below */}
+            <div className="flex flex-col">
+              <span className="text-xs font-dm font-semibold text-gray-300">{dayName}</span>
+              <span className="text-[10px] text-gray-500">{dateStr} · {timeStr}</span>
+            </div>
           </div>
         </div>
         <div className="text-right shrink-0">

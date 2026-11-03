@@ -10,8 +10,10 @@
  * sorting, which expense is being edited).
  *
  * Props received from App.jsx:
- *   - expenses: full list from localStorage
+ *   - expenses: month-filtered list from localStorage
+ *   - allExpenses: full list (for charts that need cross-month data)
  *   - onAdd, onUpdate, onDelete: state mutators
+ *   - selectedMonth: current month key (e.g. "2026-11")
  */
 
 import { useState, useMemo } from 'react'
@@ -31,7 +33,7 @@ const DEFAULT_FILTERS = {
   sortDir:  'desc',
 }
 
-export default function Dashboard({ expenses, onAdd, onUpdate, onDelete }) {
+export default function Dashboard({ expenses, allExpenses, onAdd, onUpdate, onDelete, selectedMonth }) {
   const [editingExpense, setEditingExpense] = useState(null)
   const [filters, setFilters]               = useState(DEFAULT_FILTERS)
   const [confirmId, setConfirmId]           = useState(null) // id of expense pending delete
@@ -87,8 +89,8 @@ export default function Dashboard({ expenses, onAdd, onUpdate, onDelete }) {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
-      {/* Summary Cards */}
-      <SummarySection expenses={expenses} />
+      {/* Summary Cards — uses month-filtered expenses */}
+      <SummarySection expenses={expenses} selectedMonth={selectedMonth} />
 
       {/* Main layout: Form (left) + Table (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-[380px,1fr] gap-6 items-start">
@@ -116,7 +118,7 @@ export default function Dashboard({ expenses, onAdd, onUpdate, onDelete }) {
             onDelete={handleDeleteRequest}
             totalFiltered={expenses.length}
           />
-          <ExpenseChart expenses={expenses} />
+          <ExpenseChart expenses={expenses} allExpenses={allExpenses} />
         </div>
       </div>
 

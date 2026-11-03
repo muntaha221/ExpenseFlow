@@ -65,11 +65,11 @@ function renderCustomLabel({ cx, cy, midAngle, innerRadius, outerRadius, percent
   )
 }
 
-export default function ExpenseChart({ expenses }) {
+export default function ExpenseChart({ expenses, allExpenses }) {
   const [activeTab, setActiveTab] = useState('pie')
 
   const categoryData = useMemo(() => getCategoryBreakdown(expenses), [expenses])
-  const monthlyData = useMemo(() => getMonthlyBreakdown(expenses), [expenses])
+  const monthlyData = useMemo(() => getMonthlyBreakdown(allExpenses || expenses), [allExpenses, expenses])
 
   // Empty state
   if (expenses.length === 0) {

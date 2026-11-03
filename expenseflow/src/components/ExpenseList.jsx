@@ -18,6 +18,7 @@
 import { useState, useEffect } from 'react'
 import ExpenseCard from './ExpenseCard'
 import CategoryBadge from './CategoryBadge'
+import { getDayName, formatDateShort, formatTimeShort } from '../utils/calculations'
 import {
   HiOutlinePencilSquare,
   HiOutlineTrash,
@@ -46,13 +47,6 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
       style: 'currency', currency: 'PKR',
       minimumFractionDigits: 0, maximumFractionDigits: 0,
     }).format(amount)
-  }
-
-  const formatDateTime = (dateStr) => {
-    return new Date(dateStr).toLocaleString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
-      hour: 'numeric', minute: '2-digit'
-    })
   }
 
   // ── Empty state ──
@@ -102,7 +96,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
               <th className="text-left text-xs font-dm font-medium text-gray-500
                 uppercase tracking-wider px-5 py-3">Category</th>
               <th className="text-left text-xs font-dm font-medium text-gray-500
-                uppercase tracking-wider px-5 py-3">Date</th>
+                uppercase tracking-wider px-5 py-3">Day</th>
               <th className="text-right text-xs font-dm font-medium text-gray-500
                 uppercase tracking-wider px-5 py-3">Amount</th>
               <th className="text-right text-xs font-dm font-medium text-gray-500
@@ -110,72 +104,81 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
             </tr>
           </thead>
           <tbody>
-            {expenses.map((expense, i) => (
-              <tr
-                key={expense.id}
-                className="border-b border-gray-800/50 last:border-0
-                  hover:bg-gray-800/30 transition-colors duration-150
-                  animate-fade-in-up"
-                style={{ animationDelay: `${i * 40}ms` }}
-                id={`expense-row-${expense.id}`}
-              >
-                {/* Title + Notes */}
-                <td className="px-5 py-3.5">
-                  <p className="text-sm font-dm font-medium text-gray-200">
-                    {expense.title}
-                  </p>
-                  {expense.notes && (
-                    <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px]">
-                      {expense.notes}
+            {expenses.map((expense, i) => {
+              const dayName = getDayName(expense.date)
+              const dateStr = formatDateShort(expense.date)
+              const timeStr = formatTimeShort(expense.date)
+
+              return (
+                <tr
+                  key={expense.id}
+                  className="border-b border-gray-800/50 last:border-0
+                    hover:bg-gray-800/30 transition-colors duration-150
+                    animate-fade-in-up"
+                  style={{ animationDelay: `${i * 40}ms` }}
+                  id={`expense-row-${expense.id}`}
+                >
+                  {/* Title + Notes */}
+                  <td className="px-5 py-3.5">
+                    <p className="text-sm font-dm font-medium text-gray-200">
+                      {expense.title}
                     </p>
-                  )}
-                </td>
+                    {expense.notes && (
+                      <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px]">
+                        {expense.notes}
+                      </p>
+                    )}
+                  </td>
 
-                {/* Category */}
-                <td className="px-5 py-3.5">
-                  <CategoryBadge categoryId={expense.category} />
-                </td>
+                  {/* Category */}
+                  <td className="px-5 py-3.5">
+                    <CategoryBadge categoryId={expense.category} />
+                  </td>
 
-                {/* Date */}
-                <td className="px-5 py-3.5">
-                  <div className="flex items-center gap-1.5 text-gray-400">
-                    <HiOutlineCalendar className="w-3.5 h-3.5" />
-                    <span className="text-sm">{formatDateTime(expense.date)}</span>
-                  </div>
-                </td>
+                  {/* Day (day name as title, date below) */}
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-start gap-1.5">
+                      <HiOutlineCalendar className="w-3.5 h-3.5 text-gray-500 mt-0.5 shrink-0" />
+                      <div className="flex flex-col">
+                        <span className="text-sm font-dm font-semibold text-gray-300">{dayName}</span>
+                        <span className="text-[11px] text-gray-500">{dateStr} · {timeStr}</span>
+                      </div>
+                    </div>
+                  </td>
 
-                {/* Amount */}
-                <td className="px-5 py-3.5 text-right">
-                  <span className="text-sm font-syne font-bold text-emerald-400 tabular-nums">
-                    {formatCurrency(expense.amount)}
-                  </span>
-                </td>
+                  {/* Amount */}
+                  <td className="px-5 py-3.5 text-right">
+                    <span className="text-sm font-syne font-bold text-emerald-400 tabular-nums">
+                      {formatCurrency(expense.amount)}
+                    </span>
+                  </td>
 
-                {/* Actions */}
-                <td className="px-5 py-3.5">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => onEdit(expense)}
-                      className="btn-edit"
-                      aria-label={`Edit ${expense.title}`}
-                      id={`edit-expense-${expense.id}`}
-                    >
-                      <HiOutlinePencilSquare className="w-3.5 h-3.5" />
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => onDelete(expense.id)}
-                      className="btn-delete"
-                      aria-label={`Delete ${expense.title}`}
-                      id={`delete-expense-${expense.id}`}
-                    >
-                      <HiOutlineTrash className="w-3.5 h-3.5" />
-                      Delete
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  {/* Actions */}
+                  <td className="px-5 py-3.5">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => onEdit(expense)}
+                        className="btn-edit"
+                        aria-label={`Edit ${expense.title}`}
+                        id={`edit-expense-${expense.id}`}
+                      >
+                        <HiOutlinePencilSquare className="w-3.5 h-3.5" />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => onDelete(expense.id)}
+                        className="btn-delete"
+                        aria-label={`Delete ${expense.title}`}
+                        id={`delete-expense-${expense.id}`}
+                      >
+                        <HiOutlineTrash className="w-3.5 h-3.5" />
+                        Delete
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              )
+            })}
           </tbody>
         </table>
       </div>

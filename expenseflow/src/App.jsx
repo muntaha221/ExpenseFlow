@@ -6,6 +6,7 @@
  *  2. Dark / light mode toggle (applies 'dark' class to <html>)
  *  3. Toast notifications
  *  4. CRUD operations: add, update, delete
+ *  5. Monthly navigation — selectedMonth filters which expenses are shown
  *
  * WHY KEEP CRUD HERE?
  * Because any component in the tree might trigger a CRUD action.
@@ -19,13 +20,14 @@
  *                           → re-render propagates down
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useLocalStorage }  from './hooks/useLocalStorage'
 import { getTotalAmount }   from './utils/calculations'
 import Header      from './components/Header'
 import Toast       from './components/Toast'
 import Dashboard   from './pages/Dashboard'
 import BackupModal from './components/BackupModal'
+import MonthSelector, { toMonthKey } from './components/MonthSelector'
 
 export default function App() {
   // ── Persistent expense data ──
@@ -38,6 +40,23 @@ export default function App() {
 
   // ── Backup Modal state ──
   const [isBackupOpen, setIsBackupOpen] = useState(false)
+
+  // ── Monthly navigation ──
+  // Default to current month (e.g. "2026-11")
+  const [selectedMonth, setSelectedMonth] = useState(() => toMonthKey(new Date()))
+
+  // Filter expenses to selected month only
+  const monthlyExpenses = useMemo(() => {
+    return expenses.filter(e => {
+      try {
+        const d = new Date(e.date)
+        const key = toMonthKey(d)
+        return key === selectedMonth
+      } catch {
+        return false
+      }
+    })
+  }, [expenses, selectedMonth])
 
   // Apply/remove 'dark' class on <html> whenever darkMode changes
   useEffect(() => {
@@ -84,23 +103,35 @@ export default function App() {
     setExpenses(restoredList)
   }, [setExpenses])
 
-  const total = getTotalAmount(expenses)
+  const total = getTotalAmount(monthlyExpenses)
 
   return (
     <div className="min-h-screen">
       <Header
         total={total}
-        count={expenses.length}
+        count={monthlyExpenses.length}
         darkMode={darkMode}
         onToggleDark={() => setDarkMode(d => !d)}
         onOpenBackup={() => setIsBackupOpen(true)}
+        selectedMonth={selectedMonth}
       />
 
+      {/* Month Selector — between header and dashboard */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 pt-5">
+        <MonthSelector
+          selectedMonth={selectedMonth}
+          onMonthChange={setSelectedMonth}
+          expenses={expenses}
+        />
+      </div>
+
       <Dashboard
-        expenses={expenses}
+        expenses={monthlyExpenses}
+        allExpenses={expenses}
         onAdd={handleAdd}
         onUpdate={handleUpdate}
         onDelete={handleDelete}
+        selectedMonth={selectedMonth}
       />
 
       <BackupModal
