@@ -3,16 +3,17 @@
  *
  * Super-fast personal expense entry form:
  *  1. Auto-defaults to Today (with day name, e.g. Thursday)
- *  2. Quick Date chips: [Today (Thursday)] and [Yesterday] for 1-tap logging
+ *  2. Quick Date chips: [Today] and [Yesterday] for 1-tap logging
  *  3. Quick Category selection buttons (Food, Shopping, Need, Others)
- *  4. Blank title auto-names to selected Category ("Food", "Shopping", etc.)
+ *  4. Blank title auto-names to DAY ("Monday", "Tuesday", etc.), NOT category
  *  5. Full editing & custom date support for past records
  */
 
 import { useState, useEffect } from 'react'
 import { v4 as uuidv4 } from 'uuid'
 import { validateExpense } from '../utils/validation'
-import { CATEGORIES, getCategoryById } from '../utils/categories'
+import { CATEGORIES } from '../utils/categories'
+import { getDayName } from '../utils/calculations'
 import { MdAdd, MdSave, MdCheck } from 'react-icons/md'
 import { HiOutlineCalendar, HiOutlineClock, HiOutlineSparkles } from 'react-icons/hi2'
 
@@ -45,7 +46,7 @@ export default function ExpenseForm({ onAdd, editingExpense, onUpdate, onCancelE
   const getInitialForm = () => ({
     title: '',
     amount: '',
-    category: 'food', // default to food for fastest 1-step logging
+    category: 'food',
     date: getLocalDateTimeString(new Date()),
     notes: '',
   })
@@ -98,9 +99,9 @@ export default function ExpenseForm({ onAdd, editingExpense, onUpdate, onCancelE
   function handleSubmit(e) {
     e.preventDefault()
 
-    // Auto-fill title with category name if left blank
-    const selectedCat = getCategoryById(values.category || 'other')
-    const finalTitle = values.title.trim() ? values.title.trim() : selectedCat.name
+    // Title should be Day name (NOT category) if left blank
+    const dayName = getDayName(values.date) || 'Expense'
+    const finalTitle = values.title.trim() ? values.title.trim() : dayName
 
     const formToValidate = {
       ...values,
@@ -137,6 +138,8 @@ export default function ExpenseForm({ onAdd, editingExpense, onUpdate, onCancelE
   const todayDayName = new Date().toLocaleDateString('en-US', { weekday: 'short' })
   const yesterdayObj = new Date(Date.now() - 86400000)
   const yesterdayDayName = yesterdayObj.toLocaleDateString('en-US', { weekday: 'short' })
+
+  const formDayName = getDayName(values.date) || 'Today'
 
   // Check if current form date matches today or yesterday
   const formDateObj = new Date(values.date)
@@ -274,7 +277,7 @@ export default function ExpenseForm({ onAdd, editingExpense, onUpdate, onCancelE
             </button>
           </div>
 
-          {/* Full datetime picker (shown when requested or editing) */}
+          {/* Full datetime picker */}
           {showCustomDate && (
             <div className="mt-2 animate-fade-in-up">
               <input
@@ -290,7 +293,7 @@ export default function ExpenseForm({ onAdd, editingExpense, onUpdate, onCancelE
           )}
         </div>
 
-        {/* 4. Title (Optional — auto-defaults to category) */}
+        {/* 4. Title (Auto-defaults to DAY NAME, NOT category) */}
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs text-gray-400 font-dm uppercase tracking-wider">
@@ -298,14 +301,14 @@ export default function ExpenseForm({ onAdd, editingExpense, onUpdate, onCancelE
             </label>
             <span className="text-[11px] text-gray-500 flex items-center gap-1">
               <HiOutlineSparkles className="w-3 h-3 text-emerald-400" />
-              Blank = "{getCategoryById(values.category).name}"
+              Blank = "{formDayName}"
             </span>
           </div>
           <input
             name="title"
             value={values.title}
             onChange={handleChange}
-            placeholder={`e.g. Lunch with team, or leave empty for "${getCategoryById(values.category).name}"`}
+            placeholder={`e.g. Lunch with team, or leave blank for "${formDayName}"`}
             maxLength={80}
             className={`input-base ${errors.title ? 'input-error' : ''}`}
             id="title-input"

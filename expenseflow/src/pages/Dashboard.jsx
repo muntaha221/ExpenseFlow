@@ -1,19 +1,7 @@
 /**
  * Dashboard.jsx
  *
- * The main page of the app. It assembles all components together
- * and handles the filtering + sorting logic.
- *
- * WHY A SEPARATE PAGE COMPONENT?
- * It keeps App.jsx clean. App.jsx handles global state (expenses,
- * dark mode, toast). Dashboard handles the display logic (filtering,
- * sorting, which expense is being edited).
- *
- * Props received from App.jsx:
- *   - expenses: month-filtered list from localStorage
- *   - allExpenses: full list (for charts that need cross-month data)
- *   - onAdd, onUpdate, onDelete: state mutators
- *   - selectedMonth: current month key (e.g. "2026-11")
+ * Main page assembling the form, summary metrics, filters, table, and daily chart.
  */
 
 import { useState, useMemo } from 'react'
@@ -33,16 +21,24 @@ const DEFAULT_FILTERS = {
   sortDir:  'desc',
 }
 
-export default function Dashboard({ expenses, allExpenses, onAdd, onUpdate, onDelete, selectedMonth }) {
+export default function Dashboard({
+  expenses,
+  allExpenses = [],
+  onAdd,
+  onUpdate,
+  onDelete,
+  selectedMonth,
+  onMonthChange,
+}) {
   const [editingExpense, setEditingExpense] = useState(null)
   const [filters, setFilters]               = useState(DEFAULT_FILTERS)
-  const [confirmId, setConfirmId]           = useState(null) // id of expense pending delete
+  const [confirmId, setConfirmId]           = useState(null)
 
-  // ── Filtering + Sorting (useMemo so it only recomputes when deps change) ──
+  // ── Filtering + Sorting ──
   const filtered = useMemo(() => {
     let list = [...expenses]
 
-    // Search by title (case-insensitive substring match)
+    // Search by title
     if (filters.search) {
       const q = filters.search.toLowerCase()
       list = list.filter(e => e.title.toLowerCase().includes(q))
@@ -73,12 +69,11 @@ export default function Dashboard({ expenses, allExpenses, onAdd, onUpdate, onDe
 
   function handleEdit(expense) {
     setEditingExpense(expense)
-    // Scroll to form on mobile
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   function handleDeleteRequest(id) {
-    setConfirmId(id) // open the confirm modal
+    setConfirmId(id)
   }
 
   function handleDeleteConfirmed() {
@@ -89,10 +84,10 @@ export default function Dashboard({ expenses, allExpenses, onAdd, onUpdate, onDe
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6">
 
-      {/* Summary Cards — uses month-filtered expenses */}
+      {/* Summary Cards */}
       <SummarySection expenses={expenses} selectedMonth={selectedMonth} />
 
-      {/* Main layout: Form (left) + Table (right) */}
+      {/* Main layout: Form (left) + Table & Daily Chart (right) */}
       <div className="grid grid-cols-1 lg:grid-cols-[380px,1fr] gap-6 items-start">
 
         {/* ── Left: Add/Edit Form ── */}
@@ -105,20 +100,25 @@ export default function Dashboard({ expenses, allExpenses, onAdd, onUpdate, onDe
           />
         </div>
 
-        {/* ── Right: Filters + Table ── */}
+        {/* ── Right: Filters + Table + Daily Bar Chart ── */}
         <div>
           <FilterPanel
             filters={filters}
             onChange={setFilters}
             onClear={() => setFilters(DEFAULT_FILTERS)}
+            selectedMonth={selectedMonth}
+            onMonthChange={onMonthChange}
+            allExpenses={allExpenses}
           />
           <ExpenseList
             expenses={filtered}
             onEdit={handleEdit}
             onDelete={handleDeleteRequest}
-            totalFiltered={expenses.length}
           />
-          <ExpenseChart expenses={expenses} allExpenses={allExpenses} />
+          <ExpenseChart
+            expenses={expenses}
+            selectedMonth={selectedMonth}
+          />
         </div>
       </div>
 

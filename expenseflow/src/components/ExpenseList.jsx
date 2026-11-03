@@ -4,21 +4,11 @@
  * Container component that renders expenses as either:
  *  - A responsive table (on md+ screens)
  *  - A stack of ExpenseCards (on small screens)
- *
- * WHY TWO LAYOUTS?
- * - Tables work great on desktop: compact, scannable, sortable
- * - Cards work better on mobile: full-width, tappable targets
- * - We detect screen size with a simple state + resize listener
- *
- * Props:
- *   expenses (Array) — filtered + sorted expense list
- *   onEdit (function) — called with the expense to edit
- *   onDelete (function) — called with the expense id to delete
  */
 import { useState, useEffect } from 'react'
 import ExpenseCard from './ExpenseCard'
 import CategoryBadge from './CategoryBadge'
-import { getDayName, formatDateShort, formatTimeShort } from '../utils/calculations'
+import { formatDateShort, formatTimeShort, formatPKR } from '../utils/calculations'
 import {
   HiOutlinePencilSquare,
   HiOutlineTrash,
@@ -27,10 +17,6 @@ import {
 } from 'react-icons/hi2'
 
 export default function ExpenseList({ expenses, onEdit, onDelete }) {
-  /**
-   * useIsMobile — track whether the viewport is < 768px.
-   * We use matchMedia for efficiency (no constant measuring).
-   */
   const [isMobile, setIsMobile] = useState(false)
 
   useEffect(() => {
@@ -41,20 +27,11 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
     return () => mql.removeEventListener('change', handler)
   }, [])
 
-  // ── Formatting helpers ──
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-PK', {
-      style: 'currency', currency: 'PKR',
-      minimumFractionDigits: 0, maximumFractionDigits: 0,
-    }).format(amount)
-  }
-
   // ── Empty state ──
   if (expenses.length === 0) {
     return (
       <div className="card p-12 text-center animate-fade-in-up" id="expense-list-empty">
-        <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4
-          bg-gray-800 rounded-2xl border border-gray-700">
+        <div className="flex items-center justify-center w-16 h-16 mx-auto mb-4 bg-gray-800 rounded-2xl border border-gray-700">
           <HiOutlineInboxStack className="w-7 h-7 text-gray-500" />
         </div>
         <h3 className="text-base font-syne font-bold text-gray-300 mb-1">
@@ -86,45 +63,48 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
 
   // ── Desktop: Table layout ──
   return (
-    <div className="card overflow-hidden animate-fade-in-up" id="expense-list">
+    <div className="card overflow-hidden animate-fade-in-up mb-6" id="expense-list">
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-gray-800">
-              <th className="text-left text-xs font-dm font-medium text-gray-500
-                uppercase tracking-wider px-5 py-3">Title</th>
-              <th className="text-left text-xs font-dm font-medium text-gray-500
-                uppercase tracking-wider px-5 py-3">Category</th>
-              <th className="text-left text-xs font-dm font-medium text-gray-500
-                uppercase tracking-wider px-5 py-3">Day</th>
-              <th className="text-right text-xs font-dm font-medium text-gray-500
-                uppercase tracking-wider px-5 py-3">Amount</th>
-              <th className="text-right text-xs font-dm font-medium text-gray-500
-                uppercase tracking-wider px-5 py-3">Actions</th>
+              <th className="text-left text-xs font-dm font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                Day / Title
+              </th>
+              <th className="text-left text-xs font-dm font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                Category
+              </th>
+              <th className="text-right text-xs font-dm font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                Amount
+              </th>
+              <th className="text-right text-xs font-dm font-medium text-gray-500 uppercase tracking-wider px-5 py-3">
+                Actions
+              </th>
             </tr>
           </thead>
           <tbody>
             {expenses.map((expense, i) => {
-              const dayName = getDayName(expense.date)
               const dateStr = formatDateShort(expense.date)
               const timeStr = formatTimeShort(expense.date)
 
               return (
                 <tr
                   key={expense.id}
-                  className="border-b border-gray-800/50 last:border-0
-                    hover:bg-gray-800/30 transition-colors duration-150
-                    animate-fade-in-up"
+                  className="border-b border-gray-800/50 last:border-0 hover:bg-gray-800/30 transition-colors duration-150 animate-fade-in-up"
                   style={{ animationDelay: `${i * 40}ms` }}
                   id={`expense-row-${expense.id}`}
                 >
-                  {/* Title + Notes */}
+                  {/* Title is Day (with date below) */}
                   <td className="px-5 py-3.5">
-                    <p className="text-sm font-dm font-medium text-gray-200">
+                    <p className="text-sm font-dm font-semibold text-gray-100">
                       {expense.title}
                     </p>
+                    <div className="flex items-center gap-1.5 text-[11px] text-gray-400 mt-0.5">
+                      <HiOutlineCalendar className="w-3 h-3 text-emerald-400" />
+                      <span>{dateStr} · {timeStr}</span>
+                    </div>
                     {expense.notes && (
-                      <p className="text-xs text-gray-500 mt-0.5 truncate max-w-[200px]">
+                      <p className="text-xs text-gray-500 mt-1 truncate max-w-[240px]">
                         {expense.notes}
                       </p>
                     )}
@@ -135,21 +115,10 @@ export default function ExpenseList({ expenses, onEdit, onDelete }) {
                     <CategoryBadge categoryId={expense.category} />
                   </td>
 
-                  {/* Day (day name as title, date below) */}
-                  <td className="px-5 py-3.5">
-                    <div className="flex items-start gap-1.5">
-                      <HiOutlineCalendar className="w-3.5 h-3.5 text-gray-500 mt-0.5 shrink-0" />
-                      <div className="flex flex-col">
-                        <span className="text-sm font-dm font-semibold text-gray-300">{dayName}</span>
-                        <span className="text-[11px] text-gray-500">{dateStr} · {timeStr}</span>
-                      </div>
-                    </div>
-                  </td>
-
                   {/* Amount */}
                   <td className="px-5 py-3.5 text-right">
                     <span className="text-sm font-syne font-bold text-emerald-400 tabular-nums">
-                      {formatCurrency(expense.amount)}
+                      {formatPKR(expense.amount)}
                     </span>
                   </td>
 
